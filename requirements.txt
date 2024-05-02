@@ -1,0 +1,16 @@
+astunparse==1.6.3
+fake-bpy-module-latest
+loguru<1
+ipykernel
+rich>=13,<14
+pydantic>=2,<3
+typer==0.9.0
+xrprimer==0.7.1
+packaging>=23,<24
+matplotlib>=3.4,<4
+opencv-python>=4,<5
+flow_vis==0.1
+
+
+# How to install scipy in xrfeitoria conda environment
+# python3.8 -m pip install scipy 
