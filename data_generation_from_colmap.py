@@ -1,10 +1,17 @@
 import math
+import numpy as np 
 import xrfeitoria as xf
 from pathlib import Path
 from xrfeitoria.data_structure.models import RenderPass
 from xrfeitoria.data_structure.models import SequenceTransformKey as SeqTransKey
 from xrfeitoria.rpc import remote_blender
 from xrfeitoria.utils.anim import load_amass_motion
+
+from scipy.spatial.transform import Rotation as R
+from xrfeitoria.utils.colmap_utils import read_model, convert_to_blender_coord, qvec2rotmat
+from xrfeitoria.utils.camera_utils import quaternion_slerp
+
+
 import pdb
 
 # Replace with your executable path
@@ -25,14 +32,13 @@ def apply_scale(actor_name: str, scale_factor: float):
     obj.scale.z *= scale_factor
 
 
-def read_motion(motion_path, fps=None, cut_frame=5):
+def read_motion(motion_path, fps=None, start_frame=None, end_frame=None):
     # fps:  convert the motion from 120fps (amass) to 30fps
     #  cut the motion to 10 frames, for demonstration purpose
     motion = load_amass_motion(motion_path)  # modify this to motion file in absolute path
     if fps is not None:
         motion.convert_fps(fps)  # convert the motion from 120fps (amass) to 30fps
-    if cut_frame is not None:
-        motion.cut_motion(end_frame=cut_frame)
+    motion.cut_motion(start_frame=start_frame, end_frame=end_frame)
     motion_data = motion.get_motion_data()
     n_frames = motion.n_frames
     return motion_data, n_frames
@@ -79,6 +85,80 @@ elif 'unreal' in exec_path_stem:
                                 new_process=True, 
                                 project_path='./tutorial03/assets/UE_sample/UE_sample.uproject')
 
+
+# Load COLMAP pose
+root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Noon')
+colmap_path = root_path / 'colmap_aligned'
+cameras, images, points3D = read_model(str(colmap_path), ext='.bin')
+colmap_data = {}
+colmap_data['cameras'] = cameras
+colmap_data['images'] = images
+colmap_data['points3D'] = points3D
+
+intrinsic_param = np.array([camera.params for camera in colmap_data['cameras'].values()])
+intrinsic_matrix = np.array([[intrinsic_param[0][0], 0, intrinsic_param[0][2]],
+                                [0, intrinsic_param[0][1], intrinsic_param[0][3]],
+                                [0, 0, 1]])  # TODO: only supports single camera for now
+
+image_width = np.array([camera.width for camera in colmap_data['cameras'].values()])
+image_height = np.array([camera.height for camera in colmap_data['cameras'].values()])
+image_quaternion = np.stack([img.qvec for img in colmap_data['images'].values()])
+image_translation = np.stack([img.tvec for img in colmap_data['images'].values()])
+camera_id = np.stack([img.camera_id for img in colmap_data['images'].values()]) - 1  # make it zero-indexed
+image_names = np.stack([img.name for img in colmap_data['images'].values()])
+num_image = image_names.shape[0]
+sort_image_id = np.argsort(image_names)
+
+max_step = 1
+diff_image_translation = image_translation[1:] - image_translation[:-1]
+length_diff = np.linalg.norm(diff_image_translation, axis=1)
+min_length = np.min(length_diff)
+step_list = length_diff / min_length
+step_list = np.round(step_list, 0).astype(int)
+step_list = np.minimum(step_list, max_step)
+
+transform_keys = []
+tot_quats = []
+tot_trans = []
+for idx in range(sort_image_id.shape[0] - 1):
+    ts = np.linspace(0, 1, step_list[idx])
+    # ts = np.linspace(0, 1, 10)
+
+    curr_idx = sort_image_id[idx]
+    next_idx = sort_image_id[idx + 1]
+
+    tvec_cur = image_translation[curr_idx]
+    qvec_cur = image_quaternion[curr_idx]
+
+    tvec_next = image_translation[next_idx]
+    qvec_next = image_quaternion[next_idx]
+
+    quats = [quaternion_slerp(qvec_cur, qvec_next, t) for t in ts]
+    trans =  [(1 - t) * tvec_cur + t * tvec_next for t in ts]
+
+    tot_quats.extend(quats)
+    tot_trans.extend(trans)
+
+for idx, (qvec_w2c, tvec_w2c) in enumerate(zip(tot_quats, tot_trans)):
+    tvec, qvec = convert_to_blender_coord(tvec_w2c, qvec_w2c)
+    location = (tvec[0], tvec[1], tvec[2])
+    # qvec in the order [w,x,y,z]
+    qvec = np.array([qvec[1], qvec[2], qvec[3], qvec[0]])
+    Rot = R.from_quat(qvec)
+    rotation = Rot.as_euler('xyz', degrees=True) 
+    rotation = tuple(r for r in rotation) # (156.53, 57.99, 62.94)
+
+    # Add a transform key to the moving camera
+    transform_keys.append(
+        SeqTransKey(
+            frame=idx,
+            location=location,
+            rotation=rotation,
+            interpolation='AUTO',
+        )
+    )  
+ 
+
 # Import the skeletal mesh
 actor_tmplate ='/mnt/hdd/data/SynBody/SMPL-XL-100-fbx/{:07}/SMPL-XL-baked.fbx' 
 
@@ -121,6 +201,8 @@ for _, n_frames in motion_list:
     if n_frames > max_frame_num:
         max_frame_num = n_frames
 
+print('max_frame_num:', max_frame_num) # 1396
+
 # Hyperparameters
 # center = (411.03, -2.6848, -40.564)  # Mega nerf dataset
 center = (2.67, 1.676, -1.4)  # Okuama dataset
@@ -129,7 +211,7 @@ radius_to_actor = 0.5
 num_of_cameras = 6
 # Set cameras' field of view to 90°
 camera_fov = 90
-actor_scale_factor = 0.2
+actor_scale_factor = 0.1
 
 # save the level
 if render_engine == 'unreal':
@@ -154,102 +236,19 @@ with xf_runner.sequence(seq_name=sequence_name, seq_length=max_frame_num) as seq
         actor_list[-1].location = origin_list[i]
         xf_runner.utils.apply_motion_data_to_actor(motion_data=motion_data[0], actor_name=actor_list[-1].name)
 
-    pdb.set_trace()
-    # actor1 = xf_runner.Actor.import_from_file(file_path=actor1_path, stencil_value=100)
-    # actor1 = xf_runner.Actor.import_from_file(file_path=actor1_path, scale=(0.002, 0.002, 0.002), stencil_value=100)
-    # actor2 = xf_runner.Actor.import_from_file(file_path=actor2_path, stencil_value=100)
-    # actor2 = xf_runner.Actor.import_from_file(file_path=actor2_path, scale=(0.002, 0.002, 0.002), stencil_value=200)
-
-    # apply_scale(actor1.name, scale_factor=0.2)  # SMPL-XL model is imported with scale, we need to apply scale to it
-    # apply_scale(actor2.name, scale_factor=0.2)  # SMPL-XL model is imported with scale, we need to apply scale to it
-
-    # actor1_location = center
-    # actor1.location = center
-    # # # Set the location of the two actors to make their distance to be 1.0 meter
-    # actor2.location = (center[0], center[1] + 1.0, center[2])
-
-    # actor2_bbox = actor2.bound_box
-    # actor2_center = ((actor2_bbox[0][0] + actor2_bbox[1][0]) / 2, (actor2_bbox[0][1] + actor2_bbox[1][1]) / 2, (actor2_bbox[0][2] + actor2_bbox[1][2]) / 2)
-    # actors_center = ((actor2_center[0] + actor2_center[0]) / 2, (actor2_center[1] + actor2_center[1]) / 2, (actor2_center[2] + actor2_center[2]) / 2)
-
-    # print('Apply motion data')
-    # xf_runner.utils.apply_motion_data_to_actor(motion_data=motion_data, actor_name=actor2.name)
-    # xf_runner.utils.apply_motion_data_to_actor(motion_data=motion_data, actor_name=actor2.name, is_first_frame_as_origin=False)
-    # set_scale(actor1.name)
-    # set_scale(actor2.name)
-
-    # Get the bounding boxes of the actors
-    # actor1_bbox = actor1.bound_box
-    # actor2_bbox = actor2.bound_box
-
-    # Get the center location of the actors
-    # actor1_center = ((actor1_bbox[0][0] + actor1_bbox[1][0]) / 2, (actor1_bbox[0][1] + actor1_bbox[1][1]) / 2, (actor1_bbox[0][2] + actor1_bbox[1][2]) / 2)
-    # actor2_center = ((actor2_bbox[0][0] + actor2_bbox[1][0]) / 2, (actor2_bbox[0][1] + actor2_bbox[1][1]) / 2, (actor2_bbox[0][2] + actor2_bbox[1][2]) / 2)
-    # actors_center = ((actor1_center[0] + actor2_center[0]) / 2, (actor1_center[1] + actor2_center[1]) / 2, (actor1_center[2] + actor2_center[2]) / 2)
-
-    # print('actors_center:', actors_center)
-
     # Modify the frame range to the length of the motion
     frame_start, frame_end = xf_runner.utils.get_keys_range()
     print('frame_start:', frame_start)
     print('frame_end:', frame_end)
     xf_runner.utils.set_frame_range(frame_start, frame_end)
-
-    ##########################################################################
-    # Add 6 static cameras and a moving camera around the actors for rendering
-    ##########################################################################
-    # Set cameras' distance to 3.0m
-    # distance_to_actor = 3.0
-    # Prepare the transform keys for moving camera
-    transform_keys = []
-    # calculate the location and rotation of the cameras
-    for i in range(num_of_cameras):
-        azimuth = 360 / num_of_cameras * i
-        azimuth_radians = math.radians(azimuth)
-
-        x = radius_to_actor * math.cos(azimuth_radians) + camera_origin[0]
-        y = radius_to_actor * math.sin(azimuth_radians) + camera_origin[1]
-        z = altitude + camera_origin[2]
-        location = (x, y, z)
-        # Set camera's rotation to look at the actor's center
-
-        # x = 0.0 + actors_center[0]
-        # y = distance_to_actor * math.cos(azimuth_radians) + actors_center[1]
-        # z = distance_to_actor * math.sin(azimuth_radians) + actors_center[2]
-        # location = (x, y, z)
-        # Set camera's rotation to look at the actor's center
- 
-        rotation = xf_runner.utils.get_rotation_to_look_at(location=location, target=camera_origin)
-        print(f'camera_{i} location: {location}')
-        print(f'camera_{i} rotation: {rotation}')
-
-        # Add a static camera
-        static_camera = seq.spawn_camera(
-            camera_name=f'static_camera_{i}',
-            location=location,
-            rotation=rotation,
-            fov=camera_fov,
-        )
-
-        # use the `camera` in level to render
-        seq.use_camera(camera=static_camera)
         
-        # Add a transform key to the moving camera
-        transform_keys.append(
-            SeqTransKey(
-                frame=i,
-                location=location,
-                rotation=rotation,
-                interpolation='AUTO',
-            )
-        )  
-    
     # Add a moving camera rotating around the actors
     moving_camera = seq.spawn_camera_with_keys(
         camera_name=f'moving_camera',
         transform_keys=transform_keys,
         fov=camera_fov,
     )
+    pdb.set_trace()
 
     # Add a render job to renderer
     # In render job, you can specify the output path, resolution, render passes, etc.
@@ -258,7 +257,7 @@ with xf_runner.sequence(seq_name=sequence_name, seq_length=max_frame_num) as seq
     # The render passes define what kind of data you want to render, such as img, depth, normal, etc.
     # and what kind of format you want to save, such as png, exr, etc.
     seq.add_to_renderer(
-        output_path=f'./output/{render_engine}/',
+        output_path=f'./output/{render_engine}_okutama/',
         resolution=(1280, 720),
         render_passes=[RenderPass('img', 'png'),
                        RenderPass('mask', 'exr'),

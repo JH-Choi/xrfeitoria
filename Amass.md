@@ -1,6 +1,9 @@
 ### Running
 ACCAD / Male2Running_c3d
-- C3_-_run_stageii.npz
+- C3_-_run_stageii.npz : +x,-y
+
+(5.2,3.7, -1.5)
+(0.37, 5.9, -1.5)
 
 
 ### Walking
@@ -17,9 +20,40 @@ ACCAD / Male1General_c3d
 
 ### Sitting
 BMLrub / rub001
-- 0009_sitting1_stageii.npz
+- 0009_sitting1_stageii.npz : +x
+
+(0.09, 0.78, -1.44)
 
 ### Standing
 ACCAD 
 - Male2General_c3d / A1-_Stand_stageii.npz
 - Female1General_c3d / A1-_Stand_stageii.npz 
+
+(-1.8,2.1,-0.87)
+
+
+### ACCAD
+- MartialArtsKicks
+- MartialArtsPunches
+- MartialArtsStances
+- MartialArtsWalksTurns
+
+
+### ACCAD Male1General_c3d
+- Swing Arm
+- Look Around
+- Pick Up Box
+- Lift Box
+- Lie Down 
+- Lie Forward
+- Militray Crawl Forward
+- Militray Crawl Backward
+
+### CMU
+martial arts
+
+### CMU human interaction 
+
+
+### SOMA
+clap, dance, jump, kick, lift, run, sit, squat, throw, walk

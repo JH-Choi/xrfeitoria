@@ -1,0 +1,247 @@
+import os
+import math
+import json
+import random
+import numpy as np 
+import xrfeitoria as xf
+from pathlib import Path
+from xrfeitoria.data_structure.models import RenderPass
+from xrfeitoria.data_structure.models import SequenceTransformKey as SeqTransKey
+from xrfeitoria.rpc import remote_blender
+from xrfeitoria.utils.anim import load_amass_motion
+
+from scipy.spatial.transform import Rotation as R
+from xrfeitoria.utils.colmap_utils import read_model, convert_to_blender_coord, qvec2rotmat
+from xrfeitoria.utils.camera_utils import quaternion_slerp, focal2fov, get_rotation_matrix
+
+import pdb
+
+# Replace with your executable path
+engine_exec_path = '/mnt/hdd/code/blender/blender-3.6.9-linux-x64/blender'
+
+
+@remote_blender()
+def apply_scale(actor_name: str, scale_factor: float):
+    import bpy
+
+    obj = bpy.data.objects.get(actor_name)
+    # bpy.ops.object.select_all(action='DESELECT')
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    # bpy.data.objects[actor_name].select_set(True)
+    bpy.ops.object.transform_apply(scale=True)
+    obj.scale.x *= scale_factor
+    obj.scale.y *= scale_factor
+    obj.scale.z *= scale_factor
+
+
+def read_motion(motion_path, fps=None, start_frame=None, end_frame=None):
+    # fps:  convert the motion from 120fps (amass) to 30fps
+    #  cut the motion to 10 frames, for demonstration purpose
+    motion = load_amass_motion(motion_path)  # modify this to motion file in absolute path
+    if fps is not None:
+        motion.convert_fps(fps)  # convert the motion from 120fps (amass) to 30fps
+    motion.cut_motion(start_frame=start_frame, end_frame=end_frame)
+    motion_data = motion.get_motion_data()
+    n_frames = motion.n_frames
+    return motion_data, n_frames
+
+exec_path_stem = Path(engine_exec_path).stem.lower()
+if 'blender' in exec_path_stem:
+    # Open Blender
+    render_engine = 'blender'
+    xf_runner = xf.init_blender(exec_path=engine_exec_path, 
+                                background=False, 
+                                new_process=True)
+elif 'unreal' in exec_path_stem:
+    # Unreal Engine requires a project to be opened
+    # Here we use a sample project, which is downloaded from the following link
+    # You can also use your own project
+    import shutil
+    from xrfeitoria.utils.downloader import download
+    unreal_project_zip = download(url='https://openxrlab-share.oss-cn-hongkong.aliyuncs.com/xrfeitoria/tutorials/unreal_project/UE_Sample.zip', 
+                                    dst_dir="./tutorial03/assets/")
+    shutil.unpack_archive(filename=unreal_project_zip, extract_dir='./tutorial03/assets/')
+
+    # Open Unreal Engine
+    render_engine = 'unreal'
+    xf_runner = xf.init_unreal(exec_path=engine_exec_path, 
+                                background=False, 
+                                new_process=True, 
+                                project_path='./tutorial03/assets/UE_sample/UE_sample.uproject')
+
+# Load Colmap data | Noon 497 images | Morning 715 images
+root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Noon')
+# root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Morning')
+background_mesh_file = root_path / 'PoissonMeshes_aligned' / 'fused_sor_lod8.ply'
+assert background_mesh_file.exists()
+fov = 90
+num_actors = 12
+actor_scale_factor = 0.1
+fps = 30 # 30, 120, None
+output_path = f'./output/{render_engine}_waypoint/'
+sequence_name = 'MySequence'
+
+# Load Actors
+actor_template_path = Path('/mnt/hdd/data/SynBody/SMPL-XL-1000-fbx')
+actor_list = [d for d in actor_template_path.iterdir() if d.is_dir()]
+fbx_list = random.sample(actor_list, num_actors)
+fbx_list = [str(fbx / 'SMPL-XL-baked.fbx') for fbx in fbx_list]
+
+# Load Background Current mesh 
+xf_runner.utils.import_file(file_path=background_mesh_file)
+print('Load background mesh')
+
+
+# Load the motion data from the JSON file
+with open('okutama_actor.json', 'r') as json_file:
+    motion_dict = json.load(json_file)
+
+stencil_list = [int(stencil) for stencil in np.linspace(0, 255, num_actors)]
+assert len(fbx_list) == len(stencil_list)
+
+###################
+# Set Waypoints
+###################
+Locations = [
+    (0.27656, 0.20592, 0.0), 
+    (1.2, 0.20592, 0.0),
+    (0.27656, 1.20592, 0.0), 
+    (1.2, 1.20592, 0.0),
+]
+Rotations = [
+    (-0.4816, 1.4185, 177.02),
+    (-0.4816, 1.4185, 177.02),
+    (-0.4816, 1.4185, 177.02),
+    (-0.4816, 1.4185, 177.02),
+]
+
+steps = 4
+assert len(Locations) == len(Rotations)
+
+tot_Rotation, tot_Location = [], []
+ts = np.linspace(0, 1, steps)
+for idx in range(len(Locations) - 1):
+    cur_location, nex_location = Locations[idx], Locations[idx + 1]
+    cur_rotation, nex_rotation = Rotations[idx], Rotations[idx + 1]
+    rots = [cur_rotation for _ in ts]
+    trans =  [tuple((1 - t) * np.array(cur_location) + t * np.array(nex_location)) for t in ts]
+    tot_Location.extend(trans)
+    tot_Rotation.extend(rots)  
+
+###################
+# Set Camera orbit
+###################
+USE_CAMERA_ORBIT = True
+actors_center = (0.5, 0.5, -1.5)
+altitude = 1.5 
+radius_to_actor = 1.0
+num_of_cameras = 10
+
+
+
+# Load Actor motion data
+motion_list, origin_list, rot_list = [], [], []
+min_frame_num = np.inf
+for motion_name, motion_info in motion_dict.items():
+    print("Motion:", motion_name)
+    for motion_path in motion_info["motion_paths"]:
+        if motion_name == 'sitting':
+            # motion_list.append(read_motion(motion_path, fps=fps, start_frame=310, end_frame=540)) # when fps is None
+            anim_motion = read_motion(motion_path, fps=fps, start_frame=78, end_frame=135)
+            motion_list.append(anim_motion) # when fps is 30
+        else:
+            anim_motion = read_motion(motion_path, fps=fps)
+            if motion_name == 'walking' or motion_name == 'running':
+                if anim_motion[1] < min_frame_num :
+                    min_frame_num = anim_motion[1]
+            motion_list.append(anim_motion)
+    for origin in motion_info["origins"]:
+        origin_list.append(tuple(origin))
+    for _rotation in motion_info["rotation"]:
+        rot_list.append(tuple(_rotation))
+
+assert len(motion_list) == len(origin_list) == len(rot_list) == len(fbx_list)
+
+print('min_frame_num:', min_frame_num) # 1396
+
+with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, replace=True) as seq:
+    actor_list = []
+    for i, (motion_data, actor_path, stentcil_val) in enumerate(zip(motion_list, fbx_list, stencil_list)):   
+        actor_list.append(xf_runner.Actor.import_from_file(file_path=actor_path, stencil_value=stentcil_val))
+        apply_scale(actor_list[-1].name, scale_factor=actor_scale_factor)  # SMPL-XL model is imported with scale, we need to apply scale to it
+        actor_list[-1].location = origin_list[i]
+        actor_list[-1].rotation = rot_list[i]
+        xf_runner.utils.apply_motion_data_to_actor(motion_data=motion_data[0], actor_name=actor_list[-1].name)
+
+
+    ###################
+    # Set Camera orbit
+    # If I run this part before load actor, it causes error but I don't know why
+    ###################
+    if USE_CAMERA_ORBIT:
+        # tot_Rotation, tot_Location = [], []
+        for i in range(num_of_cameras):
+            azimuth = 360 / num_of_cameras * i
+            azimuth_radians = math.radians(azimuth)
+            x = radius_to_actor * math.cos(azimuth_radians) + actors_center[0]
+            y = radius_to_actor * math.sin(azimuth_radians) + actors_center[1]
+            z = altitude + actors_center[2]
+            location = (x, y, z)
+            rotation = xf_runner.utils.get_rotation_to_look_at(location=location, target=actors_center)
+            # rot_mat  = get_rotation_matrix(location, actors_center)
+            # rotation = R.from_matrix(rot_mat).as_euler('xyz', degrees=True)
+            # rotation = tuple(rotation)
+            tot_Location.append(location)
+            tot_Rotation.append(rotation)  
+
+
+    # Spawn static cameras
+    for i, (location, rotation) in enumerate(zip(tot_Location, tot_Rotation)):
+        # Add a static camera
+        static_camera = seq.spawn_camera(
+            camera_name=f'static_camera_{i}',
+            location=location,
+            rotation=rotation,
+            fov=fov,
+        )
+        seq.use_camera(camera=static_camera)
+
+    # Add a render job to renderer
+    # In render job, you can specify the output path, resolution, render passes, etc.
+    # The output path is the path to save the rendered data.
+    # The resolution is the resolution of the rendered image.
+    # The render passes define what kind of data you want to render, such as img, depth, normal, etc.
+    # and what kind of format you want to save, such as png, exr, etc.
+    seq.add_to_renderer(
+        output_path=output_path,
+        resolution=(1280, 720),
+        render_passes=[RenderPass('img', 'png'),
+                       RenderPass('mask', 'exr')]
+    )
+
+
+# Save the camera trajectory to a json file 
+R_BlenderView_to_OpenCVView = np.diag([1,-1,-1])
+fl_x=745.38
+image_width, image_height  = 1280, 720
+znear, zfar = 0.01, 100.0
+FoVx, FoVy = focal2fov(fl_x, image_width), focal2fov(fl_x, image_height)
+res_dict = {'R': [], 'T': [], 'fl_x': 745.38}
+for rot_, loc_ in zip(tot_Rotation, tot_Location):
+    R_BlenderView = R.from_euler('xyz', rot_, degrees=True).as_matrix()
+    T_BlenderView = np.array(loc_)
+    R_OpenCV = R_BlenderView_to_OpenCVView @ np.transpose(R_BlenderView)
+    T_OpenCV = -1.0 * R_OpenCV @ T_BlenderView
+    R_OpenCV = np.transpose(R_OpenCV)
+    res_dict['R'].append([[element for element in row] for row in R_OpenCV])
+    res_dict['T'].append([row for row in T_OpenCV])
+
+cam_file_path = os.path.join(output_path, sequence_name, 'camera_trajectory.json')
+with open(cam_file_path, "w") as outfile:
+    json.dump(res_dict, outfile)
+print(f'Results saved to "{cam_file_path}".')
+
+# Render
+xf_runner.render()
+

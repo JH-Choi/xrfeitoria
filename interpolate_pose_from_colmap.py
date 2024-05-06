@@ -38,8 +38,9 @@ elif 'unreal' in exec_path_stem:
                                 project_path='./tutorial03/assets/UE_sample/UE_sample.uproject')
 
 
-# Load Colmap data
-root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Morning')
+# Load Colmap data | Noon 497 images | Morning 715 images
+root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Noon')
+# root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Morning')
 background_mesh_file = root_path / 'PoissonMeshes_aligned' / 'fused_sor_lod8.ply'
 colmap_path = root_path / 'colmap_aligned'
 fov = 90
@@ -70,15 +71,22 @@ sort_image_id = np.argsort(image_names)
 xf_runner.utils.import_file(file_path=background_mesh_file)
 print('Load background mesh')
 
-
-steps = 10
-ts = np.linspace(0, 1, steps)
+max_step = 1
+diff_image_translation = image_translation[1:] - image_translation[:-1]
+length_diff = np.linalg.norm(diff_image_translation, axis=1)
+min_length = np.min(length_diff)
+step_list = length_diff / min_length
+step_list = np.round(step_list, 0).astype(int)
+step_list = np.minimum(step_list, max_step)
 
 poses = []
 tot_quats = []
 tot_trans = []
 # for idx in range(sort_image_id.shape[0] - 1):
-for idx in range(3):
+for idx in range(1):
+    ts = np.linspace(0, 1, step_list[idx])
+    # ts = np.linspace(0, 1, 10)
+
     curr_idx = sort_image_id[idx]
     next_idx = sort_image_id[idx + 1]
 
@@ -94,6 +102,9 @@ for idx in range(3):
     tot_quats.extend(quats)
     tot_trans.extend(trans)
 
+    print(sort_image_id[idx])
+    print('image name: ', image_names[sort_image_id[idx]])
+
 sequence_name = 'MySequence'
 frame_num = num_image
 idx = 0 
@@ -105,6 +116,9 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=frame_num, replac
         # qvec in the order [w,x,y,z]
         qvec = np.array([qvec[1], qvec[2], qvec[3], qvec[0]])
         Rot = R.from_quat(qvec)
+        print(Rot)
+        print(location)
+        pdb.set_trace()
         rotation = Rot.as_euler('xyz', degrees=True)
         rotation = tuple(r for r in rotation)
 
@@ -121,9 +135,7 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=frame_num, replac
         idx+=1
     
     pdb.set_trace()
- 
 
-
-
-
-
+# Drone1/Noon_Extracted-Frames-1280x720_1_2_11_0.jpg
+# loc 9.9459, 1.2514, -0.21066
+# Rotation 60.913, -0.050382, 76.053

@@ -77,3 +77,28 @@ def quaternion_slerp(quat0, quat1, fraction: float, spin: int = 0, shortestpath:
     q0 += q1
     return q0
 
+def get_rotation_matrix(location, actors_center):
+    # Calculate direction vector from actors center to location
+    direction = np.array(location) - np.array(actors_center)
+    direction /= np.linalg.norm(direction)
+
+    # Choose an arbitrary up vector
+    up = np.array([0, 0, 1])  # You may need to adjust this based on your coordinate system
+
+    # Calculate right vector
+    right = np.cross(direction, up)
+    right /= np.linalg.norm(right)
+
+    # Recalculate up vector to ensure orthogonality
+    up = np.cross(right, direction)
+
+    # Construct rotation matrix
+    rotation_matrix = np.array([right, up, -direction])
+
+    return rotation_matrix
+
+def fov2focal(fov, pixels):
+    return pixels / (2 * math.tan(fov / 2))
+
+def focal2fov(focal, pixels):
+    return 2*math.atan(pixels/(2*focal))
