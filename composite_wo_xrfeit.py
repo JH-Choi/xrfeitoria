@@ -1,4 +1,3 @@
-import os
 import OpenEXR
 import Imath
 import json
@@ -57,23 +56,22 @@ def composite_images(mask, foreground, background):
 
 
 # Background image folder
-SPLIT_FOLDER = 'altitude1.0'
-bg_img_folder = Path('/mnt/hdd/code/gaussian_splatting/Octree-GS/outputs/Okutama_Action/Yonghan_data/okutama_n50_Noon/OkutamaMesh_Noon_baseline_baselayer12_wMask/2024-05-03_14:18:30/render_w_pose/ours_40000/altitude1.0')
+bg_img_folder = Path('/mnt/hdd/code/gaussian_splatting/Octree-GS/outputs/Okutama_Action/Yonghan_data/okutama_n50_Noon/OkutamaMesh_Noon_baseline_baselayer12_wMask/2024-05-03_14:18:30/render_w_pose/ours_40000')
 
 # Foreground image and mask folder
-mask_folder = Path(os.path.join('./output/blender_waypoint', SPLIT_FOLDER,'mask'))
-fg_img_folder = Path(os.path.join('./output/blender_waypoint', SPLIT_FOLDER,'img'))
+mask_folder = Path('./output/blender_waypoint/MySequence/mask')
+fg_img_folder = Path('./output/blender_waypoint/MySequence/img')
 
 # Output folder
-out_img_folder = Path(os.path.join('./output/blender_waypoint', SPLIT_FOLDER,'composite/images'))
-out_lbl_folder = Path(os.path.join('./output/blender_waypoint', SPLIT_FOLDER,'composite/labels'))
-out_mask_folder = Path(os.path.join('./output/blender_waypoint', SPLIT_FOLDER,'composite/masks'))
+out_img_folder = Path('./output/blender_waypoint/MySequence/composite/images')
+out_lbl_folder = Path('./output/blender_waypoint/MySequence/composite/labels')
+out_mask_folder = Path('./output/blender_waypoint/MySequence/composite/masks')
 out_img_folder.mkdir(parents=True, exist_ok=True)
 out_mask_folder.mkdir(parents=True, exist_ok=True)
 out_lbl_folder.mkdir(parents=True, exist_ok=True)
 
 # label to stencil json file
-lbl_to_stencil_file = os.path.join('./output/blender_waypoint', SPLIT_FOLDER, 'lbl_stencil.json')
+lbl_to_stencil_file = "./output/blender_waypoint/MySequence/lbl_stencil.json"   
 
 with open(lbl_to_stencil_file, 'r') as json_file:
     label2stencil = json.load(json_file)

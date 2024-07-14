@@ -70,6 +70,7 @@ elif 'unreal' in exec_path_stem:
                                 new_process=True, 
                                 project_path='./tutorial03/assets/UE_sample/UE_sample.uproject')
 
+# Set Hyperparameters
 # Load Colmap data | Noon 497 images | Morning 715 images
 root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Noon')
 # root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Morning')
@@ -79,8 +80,12 @@ fov = 90
 num_actors = 12
 actor_scale_factor = 0.1
 fps = 30 # 30, 120, None
+offsetX = 5  # Offset for controlling waypoints, camera orbit, and actor origins
+offsetY = 3  # Offset for controlling waypoints, camera orbit, and actor origins
+steps = 4
+altitude = 1.0
 output_path = f'./output/{render_engine}_waypoint/'
-sequence_name = 'MySequence'
+sequence_name = f'altitude{altitude}_offsetX{offsetX}_offsetY{offsetY}'
 
 # Load Actors
 actor_template_path = Path('/mnt/hdd/data/SynBody/SMPL-XL-1000-fbx')
@@ -97,17 +102,17 @@ print('Load background mesh')
 with open('okutama_actor.json', 'r') as json_file:
     motion_dict = json.load(json_file)
 
-stencil_list = [int(stencil) for stencil in np.linspace(0, 255, num_actors)]
+stencil_list = [int(stencil) for stencil in np.linspace(10, 255, num_actors)]
 assert len(fbx_list) == len(stencil_list)
 
 ###################
 # Set Waypoints
 ###################
 Locations = [
-    (0.27656, 0.20592, 0.0), 
-    (1.2, 0.20592, 0.0),
-    (0.27656, 1.20592, 0.0), 
-    (1.2, 1.20592, 0.0),
+    (0.27656, 0.20592, altitude), 
+    (1.2, 0.20592, altitude),
+    (0.27656, 1.20592, altitude), 
+    (1.2, 1.20592, altitude),
 ]
 Rotations = [
     (-0.4816, 1.4185, 177.02),
@@ -116,7 +121,8 @@ Rotations = [
     (-0.4816, 1.4185, 177.02),
 ]
 
-steps = 4
+for idx in range(len(Locations)):
+    Locations[idx] = tuple([Locations[idx][0] + offsetX, Locations[idx][1] + offsetY, Locations[idx][2]])
 assert len(Locations) == len(Rotations)
 
 tot_Rotation, tot_Location = [], []
@@ -134,18 +140,23 @@ for idx in range(len(Locations) - 1):
 ###################
 USE_CAMERA_ORBIT = True
 actors_center = (0.5, 0.5, -1.5)
-altitude = 1.5 
+altitude = altitude + 1.5 
 radius_to_actor = 1.0
-num_of_cameras = 10
+num_of_cameras_for_orbit = 10
+actors_center = tuple([actors_center[0] + offsetX, actors_center[1] + offsetY, actors_center[2]])
 
+assert Locations[0][-1] == (actors_center[-1] + altitude)
 
 
 # Load Actor motion data
-motion_list, origin_list, rot_list = [], [], []
+motion_list, origin_list, rot_list, lbl_list = [], [], [], []
+lbl_dict = {"running": 0, "walking": 1, "lying":2,  "sitting": 3, "standing": 4}
 min_frame_num = np.inf
 for motion_name, motion_info in motion_dict.items():
     print("Motion:", motion_name)
     for motion_path in motion_info["motion_paths"]:
+        lbl_list.append(lbl_dict[motion_name])
+
         if motion_name == 'sitting':
             # motion_list.append(read_motion(motion_path, fps=fps, start_frame=310, end_frame=540)) # when fps is None
             anim_motion = read_motion(motion_path, fps=fps, start_frame=78, end_frame=135)
@@ -157,7 +168,8 @@ for motion_name, motion_info in motion_dict.items():
                     min_frame_num = anim_motion[1]
             motion_list.append(anim_motion)
     for origin in motion_info["origins"]:
-        origin_list.append(tuple(origin))
+        origin = tuple([origin[0] + offsetX, origin[1] + offsetY, origin[2]])
+        origin_list.append(origin)
     for _rotation in motion_info["rotation"]:
         rot_list.append(tuple(_rotation))
 
@@ -165,6 +177,7 @@ assert len(motion_list) == len(origin_list) == len(rot_list) == len(fbx_list)
 
 print('min_frame_num:', min_frame_num) # 1396
 
+#  Start xf_runner
 with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, replace=True) as seq:
     actor_list = []
     for i, (motion_data, actor_path, stentcil_val) in enumerate(zip(motion_list, fbx_list, stencil_list)):   
@@ -174,27 +187,35 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, re
         actor_list[-1].rotation = rot_list[i]
         xf_runner.utils.apply_motion_data_to_actor(motion_data=motion_data[0], actor_name=actor_list[-1].name)
 
-
     ###################
     # Set Camera orbit
     # If I run this part before load actor, it causes error but I don't know why
     ###################
     if USE_CAMERA_ORBIT:
         # tot_Rotation, tot_Location = [], []
-        for i in range(num_of_cameras):
-            azimuth = 360 / num_of_cameras * i
+        for i in range(num_of_cameras_for_orbit):
+            azimuth = 360 / num_of_cameras_for_orbit * i
             azimuth_radians = math.radians(azimuth)
             x = radius_to_actor * math.cos(azimuth_radians) + actors_center[0]
             y = radius_to_actor * math.sin(azimuth_radians) + actors_center[1]
             z = altitude + actors_center[2]
             location = (x, y, z)
+            print(location, actors_center)
             rotation = xf_runner.utils.get_rotation_to_look_at(location=location, target=actors_center)
-            # rot_mat  = get_rotation_matrix(location, actors_center)
-            # rotation = R.from_matrix(rot_mat).as_euler('xyz', degrees=True)
+            print(rotation)
+
+            # from temp import look_at
+            # render_c2ws = look_at(np.array(location), np.array(actors_center), up=np.array([0., 0., 1.]))
+            # rotation = R.from_matrix(render_c2ws[:3,:3]).as_euler('xyz', degrees=True) #
             # rotation = tuple(rotation)
+            # print(rotation)
+
+            # rot_mat  = get_rotation_matrix(location, actors_center)
+            # rotation = R.from_matrix(rot_mat).as_euler('xyz', degrees=True) # this rotation is different from the above rotation
+            # rotation = tuple(rotation)
+
             tot_Location.append(location)
             tot_Rotation.append(rotation)  
-
 
     # Spawn static cameras
     for i, (location, rotation) in enumerate(zip(tot_Location, tot_Rotation)):
@@ -213,6 +234,7 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, re
     # The resolution is the resolution of the rendered image.
     # The render passes define what kind of data you want to render, such as img, depth, normal, etc.
     # and what kind of format you want to save, such as png, exr, etc.
+    pdb.set_trace()
     seq.add_to_renderer(
         output_path=output_path,
         resolution=(1280, 720),
@@ -220,6 +242,7 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, re
                        RenderPass('mask', 'exr')]
     )
 
+os.makedirs(os.path.join(output_path, sequence_name), exist_ok=True)
 
 # Save the camera trajectory to a json file 
 R_BlenderView_to_OpenCVView = np.diag([1,-1,-1])
@@ -241,6 +264,13 @@ cam_file_path = os.path.join(output_path, sequence_name, 'camera_trajectory.json
 with open(cam_file_path, "w") as outfile:
     json.dump(res_dict, outfile)
 print(f'Results saved to "{cam_file_path}".')
+
+# Save sten: label
+lbl_stencil_dict ={}
+for lbl, sten in zip(lbl_list, stencil_list):
+    lbl_stencil_dict[sten] = lbl
+with open(os.path.join(output_path, sequence_name, 'lbl_stencil.json'), 'w') as f:
+    json.dump(lbl_stencil_dict, f)
 
 # Render
 xf_runner.render()

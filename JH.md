@@ -13,8 +13,12 @@ Edit Mode, Click vertex, and press N button
 
 ### Code explanation
 data_generation.py 
-pose_from_colmap.py
-interpolate_pose_from_colmap.py
 
+### Debug Camera Trajectory using Visualization 
+* pose_from_colmap.py : visualize COLMAP camera pose
+* interpolate_pose_from_colmap.py : interpolate camera pose from colmap
+* waypoint_trajectory_generation.py : interpolate camera pose from waypoints 
 
 ### Generate Synthetic Data
+* data_generation_from_colmap.py : genearate synthetic data using COLMAP poses
+* data_generation_from_waypoint.py : genearate synthetic data using camera waypoints 

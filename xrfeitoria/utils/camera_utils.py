@@ -102,3 +102,32 @@ def fov2focal(fov, pixels):
 
 def focal2fov(focal, pixels):
     return 2*math.atan(pixels/(2*focal))
+
+# https://github.com/ventusff/neurecon/blob/main/tools/render_view.py
+def normalize(vec, axis=-1):
+    return vec / (np.linalg.norm(vec, axis=axis, keepdims=True) + 1e-9)
+
+def view_matrix(
+    forward: np.ndarray, 
+    up: np.ndarray,
+    cam_location: np.ndarray):
+    rot_z = normalize(forward)
+    rot_x = normalize(np.cross(up, rot_z))
+    rot_y = normalize(np.cross(rot_z, rot_x))
+    mat = np.stack((rot_x, rot_y, rot_z, cam_location), axis=-1)
+    hom_vec = np.array([[0., 0., 0., 1.]])
+    if len(mat.shape) > 2:
+        hom_vec = np.tile(hom_vec, [mat.shape[0], 1, 1])
+    mat = np.concatenate((mat, hom_vec), axis=-2)
+    return mat
+
+def look_at(
+    cam_location: np.ndarray, 
+    point: np.ndarray, 
+    # up=np.array([0., -1., 0.])          # openCV convention
+    up=np.array([0., 1., 0.])         # openGL convention
+    ):
+    # Cam points in positive z direction
+    # forward = normalize(point - cam_location)     # openCV convention
+    forward = normalize(cam_location - point)   # openGL convention
+    return view_matrix(forward, up, cam_location)
