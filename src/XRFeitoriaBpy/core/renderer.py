@@ -67,6 +67,10 @@ class RenderPassUtils:
             view_layer.use_pass_normal = True
         elif render_layer == RenderLayerEnum.diffuse:
             view_layer.use_pass_diffuse_color = True
+        
+        # Added by Jaehoon
+        if render_layer == RenderLayerEnum.img:
+            view_layer.cycles.use_pass_shadow_catcher = True
 
     @staticmethod
     def set_color_depth(context: bpy.types.Context, color_depth: int) -> None:
