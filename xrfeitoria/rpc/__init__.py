@@ -11,7 +11,8 @@ BLENDER_PORT = int(os.environ.get('BLENDER_PORT', 9997))
 blender_default_imports = [
     'import bpy',
     'default_level_blender = bpy.context.scene.default_level_blender',
-    'from XRFeitoriaBpy.core.factory import XRFeitoriaBlenderFactory',
+    'from src.XRFeitoriaBpy.core.factory import XRFeitoriaBlenderFactory',
+    # 'from XRFeitoriaBpy.core.factory import XRFeitoriaBlenderFactory',
 ]
 
 # use different remap pairs when inside a container
