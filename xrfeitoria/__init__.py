@@ -1,5 +1,3 @@
-import threading
-
 __all__ = ['__version__', 'init_blender', 'init_unreal']
 
 
@@ -9,10 +7,7 @@ class CacheThread:
 
     @property
     def cache(self):
-        key = threading.current_thread().ident
-        if key not in self.global_vars:
-            self.global_vars[key] = {'platform': None, 'engine_process': None, 'unreal_project_path': None}
-        return self.global_vars[key]
+        return self.global_vars
 
 
 def _get_version() -> str:
@@ -27,5 +22,5 @@ def _get_version() -> str:
 
 
 _tls = CacheThread()
-__version__ = _get_version()
+__version__ = _get_version()  # e.g. '0.5.0'
 from .factory import init_blender, init_unreal
