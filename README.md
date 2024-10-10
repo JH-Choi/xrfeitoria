@@ -91,12 +91,14 @@ If you want to publish plugins of your own, you can use the following command:
 cd xrfeitoria
 pip install .
 
-# for instance, build plugins for Blender, UE 5.1, UE 5.2, and UE 5.3 on Windows.
-# using powershell where backtick(`) is the line continuation character.
-python -m xrfeitoria.utils.publish_plugins `
+# build plugins for UE 5.1, UE 5.2, and UE 5.3 on Windows
+python -m xrfeitoria.utils.publish_plugins build-unreal `
     -u "C:/Program Files/Epic Games/UE_5.1/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" `
     -u "C:/Program Files/Epic Games/UE_5.2/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" `
     -u "C:/Program Files/Epic Games/UE_5.3/Engine/Binaries/Win64/UnrealEditor-Cmd.exe"
+
+# build plugins for Blender
+python -m xrfeitoria.utils.publish_plugins build-blender
 ```
 
 ### Frequently Asked Questions
@@ -114,6 +116,7 @@ Please refer to [FAQ](https://xrfeitoria.readthedocs.io/en/latest/faq.html).
 | [MatrixCity: A Large-scale City Dataset for City-scale Neural Rendering and Beyond](https://city-super.github.io/matrixcity/) | <a href=https://city-super.github.io/matrixcity/><img src="https://city-super.github.io/matrixcity/img/teaser.jpg"></a> | Unreal Engine |
 | [HumanLiff: Layer-wise 3D Human Generation with Diffusion Model](https://skhu101.github.io/HumanLiff/) | <a href=https://skhu101.github.io/HumanLiff/><img src="https://skhu101.github.io/HumanLiff/HumanLiff%20-%20Project%20Page_files/SHERF_teaser.png"/></a> | Blender |
 | [PrimDiffusion: Volumetric Primitives Diffusion for 3D Human Generation](https://frozenburning.github.io/projects/primdiffusion/) | <a href=https://frozenburning.github.io/projects/primdiffusion/><img src="https://openxrlab-share.oss-cn-hongkong.aliyuncs.com/xrfeitoria/pics/PrimDiffusion.png"></a> | Blender |
+| [WHAC: World-grounded Humans and Cameras](https://wqyin.github.io/projects/WHAC/) | <a href=https://wqyin.github.io/projects/WHAC/><img src="https://openxrlab-share.oss-cn-hongkong.aliyuncs.com/xrfeitoria/pics/whac.jpg"></a> | Unreal Engine |
 
 ## License
 
