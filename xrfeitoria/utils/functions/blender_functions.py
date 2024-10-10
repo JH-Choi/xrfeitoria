@@ -292,7 +292,6 @@ def export_vertices(export_path: 'PathLike', use_animation: bool = True) -> None
     scene = XRFeitoriaBlenderFactory.get_active_scene()
     XRFeitoriaBlenderFactory.export_vertices(scene=scene, export_path=export_path, use_animation=use_animation)
 
-
 @remote_blender()
 def get_rotation_to_look_at(location: 'Vector', target: 'Vector') -> 'Vector':
     """Get the rotation of an object to look at another object.

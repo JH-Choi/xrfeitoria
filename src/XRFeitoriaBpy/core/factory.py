@@ -745,8 +745,8 @@ class XRFeitoriaBlenderFactory:
         for render_pass in render_passes:
             bpy.ops.wm.add_render_pass(
                 output_path=output_path,
-                render_layer=render_pass['render_layer'],
-                format=render_pass['image_format'],
+                render_layer=render_pass['render_layer'], # img, mask
+                format=render_pass['image_format'], # png, exr
             )
 
     def set_background_transparent(scene: 'bpy.types.Scene', transparent: bool = False) -> None:

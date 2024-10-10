@@ -304,7 +304,7 @@ class RendererBlender(RendererBase):
         # clear compositing nodes
         if scene.node_tree:
             scene.node_tree.nodes.clear()
-
+        
         # get active cameras in the scene
         active_cameras = XRFeitoriaBlenderFactory.get_active_cameras(scene=scene)
         if len(active_cameras) == 0:
@@ -316,7 +316,7 @@ class RendererBlender(RendererBase):
             output_path=job['output_path'],
             render_passes=job['render_passes'],
             scene=scene,
-        )
+        ) #
         XRFeitoriaBlenderFactory.set_background_transparent(transparent=job['transparent_background'], scene=scene)
         XRFeitoriaBlenderFactory.set_render_samples(render_samples=job['render_samples'], scene=scene)
         XRFeitoriaBlenderFactory.set_resolution(resolution=job['resolution'], scene=scene)

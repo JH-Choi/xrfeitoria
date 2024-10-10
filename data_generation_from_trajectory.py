@@ -15,6 +15,7 @@ from xrfeitoria.utils.colmap_utils import read_model, convert_to_blender_coord, 
 from xrfeitoria.utils.camera_utils import quaternion_slerp, focal2fov, get_rotation_matrix
 
 import bpy
+import json
 import pdb
 
 # Replace with your executable path
@@ -35,6 +36,23 @@ def apply_scale(actor_name: str, scale_factor: float):
     obj.scale.z *= scale_factor
 
 
+@remote_blender()
+def load_asset_name(text_name):
+    out = []
+    for obj in bpy.data.objects:
+        if obj.type == 'MESH':
+            out.append(obj.name)
+    with open(text_name, 'w') as text_file:
+        for name in out:
+            text_file.write(name + '\n')  
+    text_file.close()
+
+# def read_asset_names(text_name):    
+#     with open(text_name, 'r') as text_file:
+#         mesh_names = [line.strip() for line in text_file.readlines()]
+#     return mesh_names
+
+
 def read_motion(motion_path, fps=None, start_frame=None, end_frame=None):
     # fps:  convert the motion from 120fps (amass) to 30fps
     #  cut the motion to 10 frames, for demonstration purpose
@@ -51,7 +69,7 @@ if 'blender' in exec_path_stem:
     # Open Blender
     render_engine = 'blender'
     xf_runner = xf.init_blender(exec_path=engine_exec_path, 
-                                background=False, 
+                                background=False, # False 
                                 new_process=True)
 elif 'unreal' in exec_path_stem:
     # Unreal Engine requires a project to be opened
@@ -95,10 +113,13 @@ actor_list = [d for d in actor_template_path.iterdir() if d.is_dir()]
 fbx_list = random.sample(actor_list, num_actors)
 fbx_list = [str(fbx / 'SMPL-XL-baked.fbx') for fbx in fbx_list]
 
-# actor_template_path = Path('/mnt/hdd/data/SynBody/SMPL-XL-100-obj')
-# actor_list = [d for d in actor_template_path.iterdir() if d.is_dir()]
-# fbx_list = random.sample(actor_list, num_actors)
-# fbx_list = [str(fbx / 'SMPL-XL-Tpose.obj') for fbx in fbx_list]
+# for fbx_file in fbx_list:
+#     print(fbx_file)
+#     assert Path(fbx_file).exists()
+#     asset_name = load_fbx_object_names(fbx_file)
+#     print(asset_name)
+#     pdb.set_trace() 
+
 
 
 @remote_blender()
@@ -109,14 +130,19 @@ def generate_plane(actor_name: str, size):
     plane.is_shadow_catcher = True
 
 
-# # Load Plane for shadow catcher
+###################
+# Load Plane for shadow catcher
+###################
 # size = 30
 # xf_runner.Shape.spawn_plane(name='plane', location=(0,0,-1.5))
 # generate_plane('plane', size=size)
 
-# Load Background Current mesh 
-xf_runner.utils.import_file(file_path=background_mesh_file)
-print('Load background mesh')
+
+###################
+# # Load Background Current mesh 
+###################
+# xf_runner.utils.import_file(file_path=background_mesh_file)
+# print('Load background mesh')
 
 
 # Load the motion data from the JSON file
@@ -159,7 +185,7 @@ for idx in range(len(Locations) - 1):
 ###################
 # Set Camera orbit
 ###################
-USE_CAMERA_ORBIT = True
+USE_CAMERA_ORBIT = False
 actors_center = (0.5, 0.5, -1.5)
 altitude = altitude + 1.5 
 radius_to_actor = 1.0
@@ -200,11 +226,29 @@ print('min_frame_num:', min_frame_num) # 1396
 
 os.makedirs(os.path.join(output_path, sequence_name), exist_ok=True)
 
+all_assets_name = []    
+actor_info_dict = {}
+text_path = 'actor_info.txt'
+
+min_frame_num=10
 #  Start xf_runner
 with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, replace=True) as seq:
     actor_list = []
     for i, (motion_data, actor_path, stentcil_val) in enumerate(zip(motion_list, fbx_list, stencil_list)):   
         actor_list.append(xf_runner.Actor.import_from_file(file_path=actor_path, stencil_value=stentcil_val))
+        # actor_name = actor_list[-1].name 
+        load_asset_name(text_path)
+        # import pdb; pdb.set_trace()
+        # out = read_asset_names(text_path)
+
+        # actor_info_dict[actor_name] = []
+        # for asset_name in out:
+        #     if asset_name not in all_assets_name:
+        #         actor_info_dict[actor_name].append(asset_name)
+        # all_assets_name.extend(out)
+
+        # out = load_asset_name(actor_list[-1].name)
+        # actor_info_dict[actor_list[-1].name] = out  
         apply_scale(actor_list[-1].name, scale_factor=actor_scale_factor)  # SMPL-XL model is imported with scale, we need to apply scale to it
         actor_list[-1].location = origin_list[i]
         actor_list[-1].rotation = rot_list[i]
@@ -240,16 +284,18 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, re
             tot_Location.append(location)
             tot_Rotation.append(rotation)  
 
-    # Spawn static cameras
-    for i, (location, rotation) in enumerate(zip(tot_Location, tot_Rotation)):
-        # Add a static camera
-        static_camera = seq.spawn_camera(
-            camera_name=f'static_camera_{i}',
-            location=location,
-            rotation=rotation,
-            fov=fov,
-        )
-        seq.use_camera(camera=static_camera)
+    #############################################
+    ### Spawn static cameras
+    #############################################
+    # for i, (location, rotation) in enumerate(zip(tot_Location, tot_Rotation)):
+    #     # Add a static camera
+    #     static_camera = seq.spawn_camera(
+    #         camera_name=f'static_camera_{i}',
+    #         location=location,
+    #         rotation=rotation,
+    #         fov=fov,
+    #     )
+    #     seq.use_camera(camera=static_camera)
     
     if hdri_path:
         xf_runner.utils.set_hdr_map(hdr_map_path=hdri_path)
@@ -260,20 +306,29 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, re
     # The resolution is the resolution of the rendered image.
     # The render passes define what kind of data you want to render, such as img, depth, normal, etc.
     # and what kind of format you want to save, such as png, exr, etc.
-    seq.add_to_renderer(
-        output_path=output_path,
-        resolution=(1280, 720),
-        render_passes=[RenderPass('img', 'png'),
-                       RenderPass('depth', 'exr'),  
-                       RenderPass('mask', 'exr')], 
-        render_samples=32,  # default value 128
-        transparent_background=True, 
-    )
-
-    # export verts of meshes in this sequence and its level
-    # xf_runner.utils.export_vertices(export_path=output_path / seq_2_name / 'vertices')
-    pdb.set_trace()
+    # seq.add_to_renderer(
+    #     output_path=output_path,
+    #     resolution=(1280, 720),
+    #     render_passes=[RenderPass('img', 'png'),
+    #                    RenderPass('depth', 'exr'),  
+    #                    RenderPass('mask', 'exr')], 
+    #     render_samples=32,  # default value 128
+    #     transparent_background=True, 
+    # )
     
+    # export verts of meshes in this sequence and its level
+    export_path = os.path.join(output_path, sequence_name, 'vertices')
+    xf_runner.utils.export_vertices(export_path=export_path, use_animation=True)
+    # xf_runner.utils.export_vertices(export_path=export_path)
+    # xf_runner.utils.create_render_package(
+    #     export_path=export_path, 
+    #     use_animation=True
+    # )
+
+actor_names = [actor.name for actor in actor_list]
+print(actor_names)
+pdb.set_trace()
+
 
 # Save the camera trajectory to a json file 
 R_BlenderView_to_OpenCVView = np.diag([1,-1,-1])

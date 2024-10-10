@@ -22,3 +22,4 @@ data_generation.py
 ### Generate Synthetic Data
 * data_generation_from_colmap.py : genearate synthetic data using COLMAP poses
 * data_generation_from_waypoint.py : genearate synthetic data using camera waypoints 
+* data_generation_from_trajectory.py : (clean the code => data_generation_from_waypoint.py) genearate synthetic data from camera trajectory  

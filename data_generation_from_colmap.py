@@ -248,7 +248,6 @@ with xf_runner.sequence(seq_name=sequence_name, seq_length=max_frame_num) as seq
         transform_keys=transform_keys,
         fov=camera_fov,
     )
-    pdb.set_trace()
 
     # Add a render job to renderer
     # In render job, you can specify the output path, resolution, render passes, etc.
