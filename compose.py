@@ -140,16 +140,24 @@ def main(args):
                 x_coords, y_coords = non_zero_indices[:, 1], non_zero_indices[:, 0]
 
                 # Compute min and max values
-                min_x, min_y = np.min(x_coords), np.min(y_coords)
-                max_x, max_y = np.max(x_coords), np.max(y_coords)
-                # tot_img = cv2.rectangle(tot_img,(min_x,min_y),(max_x,max_y),(0,0,255),5) # red    
-                debug_img = cv2.rectangle(debug_img,(min_x,min_y),(max_x,max_y),(0,0,255),5) # red    
+                xmin, ymin = np.min(x_coords), np.min(y_coords)
+                xmax, ymax = np.max(x_coords), np.max(y_coords)
+                debug_img = cv2.rectangle(debug_img,(xmin,ymin),(xmax,ymax),(0,0,255),5) # red    
 
                 # TODO: comment this line if we want to generate data for action recognition
                 lbl = 0 # person detection 
 
                 # save bounding box in annotation file, default 0 for pose class, min_x, min_y, width, height
-                f_annot.write("{} {} {} {} {}\n".format(lbl, min_x, min_y, max_x - min_x, max_y - min_y))
+                # f_annot.write("{} {} {} {} {}\n".format(lbl, xmin, ymin, xmax - xmin, ymax - ymin))
+
+                # Yolov format
+                WIDTH, HEIGHT = 1280, 720 
+                x_c = (xmin + ((xmax - xmin) / 2)) / WIDTH
+                y_c = (ymin + ((ymax - ymin) / 2)) / HEIGHT
+                w = (xmax - xmin) / WIDTH
+                h = (ymax - ymin) / HEIGHT
+                f_annot.write("%d %0.6f %0.6f %0.6f %0.6f\n" %(lbl,x_c,y_c,w,h))
+
             f_annot.close()
 
             cv2.imwrite(str(out_mask_path), debug_img)
