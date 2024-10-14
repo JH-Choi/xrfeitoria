@@ -26,3 +26,5 @@ ITER=30000
 
 OUT_FOLDER=/mnt/hdd/code/human_data_generation/xrfeitoria/output/waypoint/$SEQ_NAME
 python compose.py --output_path $OUT_FOLDER --motion_blur_degree 4
+
+# ln -s $OUT_FOLDER /mnt/hdd/data/Okutama_Action/yolov8_Detection/altitude2.0_offsetX0_offsetY0_scale0.125
