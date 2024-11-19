@@ -1,3 +1,13 @@
 {
-
+    "blender_cache_dir": "./results",
+    "im_height": 720,
+    "im_width": 1280,
+    "render_type": "SINGLE_VIEW",
+    "insert_object_info": {
+        "object_name": "Cube",
+        "object_path": "blender_simple/objects/Cube.blend",
+        "object_scale": 0.5,
+        "object_rotation": [0, 0, 0],
+        "object_translation": [0, 0, 0]
+    }
 }
