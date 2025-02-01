@@ -26,7 +26,7 @@ if 'blender' in exec_path_stem:
     # Open Blender
     render_engine = 'blender'
     xf_runner = xf.init_blender(exec_path=engine_exec_path, 
-                                background=False, 
+                                background=True, 
                                 new_process=True)
 
 

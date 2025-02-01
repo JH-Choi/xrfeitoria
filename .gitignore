@@ -524,4 +524,6 @@ xrfeitoria/version.py
 */*/outputs/
 
 output/
+dataset/
 # data/
+tmp/

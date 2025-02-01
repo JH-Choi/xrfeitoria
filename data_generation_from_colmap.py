@@ -89,6 +89,8 @@ elif 'unreal' in exec_path_stem:
 # Load COLMAP pose
 root_path = Path('/mnt/hdd/data/Okutama_Action/Yonghan_data/okutama_n50_Noon')
 colmap_path = root_path / 'colmap_aligned'
+# root_path = Path('/mnt/hdd/data/Okutama_Action/GS_data/Scenario2/undistorted/')
+# colmap_path = root_path / 'sparse/0'
 cameras, images, points3D = read_model(str(colmap_path), ext='.bin')
 colmap_data = {}
 colmap_data['cameras'] = cameras

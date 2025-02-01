@@ -71,7 +71,7 @@ def main(args):
     # Load Plane for shadow catcher
     if args.use_plane:
         plane_size = 30
-        xf_runner.Shape.spawn_plane(name='plane', location=(0,0,-1.5))
+        xf_runner.Shape.spawn_plane(name='plane', location=(0,0,-3.0))
         generate_plane('plane', size=plane_size)
 
     # Load Background Current mesh 
@@ -169,7 +169,7 @@ def main(args):
             actor_list[-1].location = origin_list[i]
             actor_list[-1].rotation = rot_list[i]
             xf_runner.utils.apply_motion_data_to_actor(motion_data=motion_data[0], actor_name=actor_list[-1].name)
-
+        pdb.set_trace()
         ###################
         # Set Camera orbit
         ###################
@@ -209,6 +209,7 @@ def main(args):
             seq.use_camera(camera=static_camera)
         
         if args.hdri_path:
+            print('Set HDR map {}'.format(args.hdri_path))
             xf_runner.utils.set_hdr_map(hdr_map_path=args.hdri_path)
 
         # Add a render job to renderer
@@ -220,12 +221,15 @@ def main(args):
         seq.add_to_renderer(
             output_path=args.output_path,
             resolution=tuple(args.resolution),
-            render_passes=[RenderPass('img', 'png'),
-                        RenderPass('depth', 'exr'),  
-                        RenderPass('mask', 'exr')], 
+            render_passes=[
+                RenderPass('img', 'png'),
+                RenderPass('depth', 'exr'),  
+                RenderPass('mask', 'exr')
+            ], 
             render_samples=32,  # default value 128
             transparent_background=True, 
         )
+        # RenderPass('img', 'png'),
 
         # export verts of meshes in this sequence and its level
         # xf_runner.utils.export_vertices(export_path=output_path / seq_2_name / 'vertices')
