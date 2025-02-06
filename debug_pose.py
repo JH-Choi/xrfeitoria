@@ -72,7 +72,7 @@ def main(args):
                                     background=False, 
                                     new_process=True)
 
-    # Load Colmap data
+    # # Load Colmap data
     # colmap_path = Path(args.colmap_path)
 
     # cameras, images, points3D = read_model(str(colmap_path), ext='.bin')
@@ -167,5 +167,5 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     args.colmap_path = '/mnt/hdd/data/Okutama_Action/GS_data/Scenario2/undistorted/sparse/0/'
-    args.background_mesh_file = '/mnt/hdd/data/Okutama_Action/GS_data/Scenario2/undistorted/Poisson/mesh_poisson_level10_density9_decim.ply'
+    args.background_mesh_file = '/mnt/hdd/code/outdoor_relighting/PGSR/output/okutama_r2_wg_mip/Scenario2/mesh_maxdepth10_vox0.01/tsdf_fusion_post_deci.ply'
     main(args)
