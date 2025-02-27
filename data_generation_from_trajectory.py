@@ -327,8 +327,6 @@ with xf_runner.Sequence.new(seq_name=sequence_name, seq_length=min_frame_num, re
 
 actor_names = [actor.name for actor in actor_list]
 print(actor_names)
-pdb.set_trace()
-
 
 # Save the camera trajectory to a json file 
 R_BlenderView_to_OpenCVView = np.diag([1,-1,-1])

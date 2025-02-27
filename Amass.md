@@ -1,3 +1,11 @@
+### Avatars
+- Avatars wore black clothes
+
+6001,6043,6045,6083,6085,6120,6145,6152,6216,6232,6237,6174,6200
+
+6174,6200
+
+I checked until 6238!
 ### Running
 ACCAD / Male2Running_c3d
 - C3_-_run_stageii.npz : +x,-y

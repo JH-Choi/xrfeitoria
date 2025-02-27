@@ -155,6 +155,7 @@ def main(args):
 
     if args.moving_camera:
         camtoworlds_all = []
+        transform_keys = []
         tot_quats, tot_trans = [], []
         tot_Location_moving, tot_Rotation_moving = [], []
         for idx in range(len(sort_image_id)):
@@ -190,6 +191,16 @@ def main(args):
 
             tot_Location_moving.append(location)
             tot_Rotation_moving.append(rotation)
+
+            # Add a transform key to the moving camera
+            transform_keys.append(
+                SeqTransKey(
+                    frame=idx,
+                    location=location,
+                    rotation=rotation,
+                    interpolation='AUTO',
+                )
+            )  
 
     # if args.moving_camera:
     #     max_step = 5
@@ -244,10 +255,10 @@ def main(args):
     #             )
     #         )  
 
+
  
     # save trajectory for rendering Gaussian Splatting
     tot_Rotation, tot_Location = [], []
-    tot_moving_dict = {}
 
     with xf_runner.Sequence.new(seq_name=args.sequence_name, seq_length=min_frame_num, replace=True) as seq:
         # Load Actors
@@ -261,37 +272,11 @@ def main(args):
 
         if args.moving_camera:
             # Add a moving camera rotating around the actors
-            # moving_camera = seq.spawn_camera_with_keys(
-            #     camera_name=f'moving_camera',
-            #     transform_keys=transform_keys,
-            #     fov=args.fov,
-            # )
-
-            moving_subset = len(tot_Location_moving) // min_frame_num
-            moving_cam_idx = (len(tot_Location_moving) - min_frame_num * moving_subset)//2
-            for moving_idx in range(moving_subset):
-                transform_keys = []
-                for idx in range(min_frame_num):
-                    transform_keys.append(
-                        SeqTransKey(
-                            frame=idx,
-                            location=tot_Location_moving[moving_cam_idx + idx],
-                            rotation=tot_Rotation_moving[moving_cam_idx + idx],
-                            interpolation='AUTO',
-                        )
-                    )  
-                moving_camera = seq.spawn_camera_with_keys(
-                    camera_name=f'moving_camera_{moving_idx}',
-                    transform_keys=transform_keys,
-                    fov=args.fov,
-                )
-
-                tot_moving_dict[f'moving_camera_{moving_idx}'] = {} 
-                tot_moving_dict[f'moving_camera_{moving_idx}']['location'] = tot_Location_moving[moving_cam_idx:moving_cam_idx + min_frame_num]
-                tot_moving_dict[f'moving_camera_{moving_idx}']['rotation'] = tot_Rotation_moving[moving_cam_idx:moving_cam_idx + min_frame_num]
-
-                moving_cam_idx += min_frame_num
-                seq.use_camera(camera=moving_camera)
+            moving_camera = seq.spawn_camera_with_keys(
+                camera_name=f'moving_camera',
+                transform_keys=transform_keys,
+                fov=args.fov,
+            )
 
         # Load Cameras 
         for idx, i_id in enumerate(sort_image_id):
@@ -350,6 +335,10 @@ def main(args):
         # export verts of meshes in this sequence and its level
         # xf_runner.utils.export_vertices(export_path=output_path / seq_2_name / 'vertices')
 
+    xf_runner.render()
+    pdb.set_trace()
+
+
     # Save the camera trajectory to a json file 
     R_BlenderView_to_OpenCVView = np.diag([1,-1,-1])
     fl_x=args.focal_x
@@ -370,40 +359,21 @@ def main(args):
     print(f'Results saved to "{cam_file_path}". # of frames: {len(tot_Rotation)}')
 
     if args.moving_camera:
-        for key in tot_moving_dict.keys():
-            sub_Rotation_moving = tot_moving_dict[key]['rotation']
-            sub_Location_moving = tot_moving_dict[key]['location']
-            res_dict_moving = {'R': [], 'T': [], 'fl_x': fl_x}
-            for rot_, loc_ in zip(sub_Rotation_moving, sub_Location_moving):
-                R_BlenderView = R.from_euler('xyz', rot_, degrees=True).as_matrix()
-                T_BlenderView = np.array(loc_)
-                R_OpenCV = R_BlenderView_to_OpenCVView @ np.transpose(R_BlenderView)
-                T_OpenCV = -1.0 * R_OpenCV @ T_BlenderView
-                R_OpenCV = np.transpose(R_OpenCV)
-                res_dict_moving['R'].append([[element for element in row] for row in R_OpenCV])
-                res_dict_moving['T'].append([row for row in T_OpenCV])
+        res_dict_moving = {'R': [], 'T': [], 'fl_x': fl_x}
+        for rot_, loc_ in zip(tot_Rotation_moving, tot_Location_moving):
+            R_BlenderView = R.from_euler('xyz', rot_, degrees=True).as_matrix()
+            T_BlenderView = np.array(loc_)
+            R_OpenCV = R_BlenderView_to_OpenCVView @ np.transpose(R_BlenderView)
+            T_OpenCV = -1.0 * R_OpenCV @ T_BlenderView
+            R_OpenCV = np.transpose(R_OpenCV)
+            res_dict_moving['R'].append([[element for element in row] for row in R_OpenCV])
+            res_dict_moving['T'].append([row for row in T_OpenCV])
 
-            os.makedirs(os.path.join(args.output_path, args.sequence_name), exist_ok=True)
-            cam_file_path = os.path.join(args.output_path, args.sequence_name, f'{key}_trajectory.json')
-            with open(cam_file_path, "w") as outfile:
-                json.dump(res_dict_moving, outfile, indent=True)
-            print(f'Results saved to "{cam_file_path}". # of frames: {len(sub_Rotation_moving)}')
-
-        # res_dict_moving = {'R': [], 'T': [], 'fl_x': fl_x}
-        # for rot_, loc_ in zip(tot_Rotation_moving, tot_Location_moving):
-        #     R_BlenderView = R.from_euler('xyz', rot_, degrees=True).as_matrix()
-        #     T_BlenderView = np.array(loc_)
-        #     R_OpenCV = R_BlenderView_to_OpenCVView @ np.transpose(R_BlenderView)
-        #     T_OpenCV = -1.0 * R_OpenCV @ T_BlenderView
-        #     R_OpenCV = np.transpose(R_OpenCV)
-        #     res_dict_moving['R'].append([[element for element in row] for row in R_OpenCV])
-        #     res_dict_moving['T'].append([row for row in T_OpenCV])
-
-        # os.makedirs(os.path.join(args.output_path, args.sequence_name), exist_ok=True)
-        # cam_file_path = os.path.join(args.output_path, args.sequence_name, 'moving_camera_trajectory.json')
-        # with open(cam_file_path, "w") as outfile:
-        #     json.dump(res_dict_moving, outfile, indent=True)
-        # print(f'Results saved to "{cam_file_path}". # of frames: {len(tot_Rotation_moving)}')
+        os.makedirs(os.path.join(args.output_path, args.sequence_name), exist_ok=True)
+        cam_file_path = os.path.join(args.output_path, args.sequence_name, 'moving_camera_trajectory.json')
+        with open(cam_file_path, "w") as outfile:
+            json.dump(res_dict_moving, outfile, indent=True)
+        print(f'Results saved to "{cam_file_path}". # of frames: {len(tot_Rotation_moving)}')
 
     # Save sten: label
     lbl_stencil_dict ={}
@@ -413,14 +383,14 @@ def main(args):
         json.dump(lbl_stencil_dict, f, indent=True)
     f.close()
 
+    # Render
+    # xf_runner.render()
+
     # save all configs to a json file
     with open(os.path.join(args.output_path, args.sequence_name, 'config.json'), 'w') as f:
         json.dump(vars(args), f, indent=True)
     f.close()
-
-    # Render
-    xf_runner.render()
-
+    
 
 if __name__ == '__main__':
     parser = ArgumentParser()

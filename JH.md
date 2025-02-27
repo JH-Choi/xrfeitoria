@@ -28,3 +28,8 @@ data_generation.py
 ### Generate Synthetic Data v2 
 Randomly distribute human and its motion 
 * auto_generation_from_colmap.py : genearate synthetic data using COLMAP poses
+
+### Scripts for generating synthetic data
+* auto_generate.sh: Generate Data
+* auto_compose.sh: Scene Composition 
+* auto_combine.sh: Combine all Data
