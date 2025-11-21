@@ -16,29 +16,32 @@ ROOT_PATH='/mnt/hdd/code/human_data_generation/xrfeitoria/output'
 # REAL_FOLDERS = [] 
 
 ############
-OUT_PATH='/mnt/hdd/code/human_data_generation/xrfeitoria/output/S2_Noon_v0'
+# OUT_PATH='/mnt/hdd/code/human_data_generation/xrfeitoria/output/S2_Noon_v0'
 # REAL_FOLDERS=['/mnt/hdd/data/Okutama_Action/yolov8_Detection/1.2.2/'] 
-REAL_FOLDERS=[] 
-SUB_FOLDERS=[ 
-    'S2_Drone1_Noon_1_2_2/auto_Drone1_Noon_1_2_2_alti0',
-    'S2_Drone2_Noon_2_2_2/auto_Drone2_Noon_2_2_2_alti0',
-    'S2_Drone1_Noon_1_2_4/auto_Drone1_Noon_1_2_4_alti0',
-    'S2_Drone2_Noon_2_2_4/auto_Drone2_Noon_2_2_4_alti0',
-    'S2_Drone1_Noon_1_2_9/auto_Drone1_Noon_1_2_9_alti0',
-    'S2_Drone2_Noon_2_2_9/auto_Drone2_Noon_2_2_9_alti0',
-]
-############
-
-# OUT_PATH='/mnt/hdd/code/human_data_generation/xrfeitoria/output/S3_Morning_v0'
-# # REAL_FOLDERS=['/mnt/hdd/data/Okutama_Action/yolov8_Detection/2.2.4/'] 
 # REAL_FOLDERS=[] 
 # SUB_FOLDERS=[ 
-#     'S3_Drone1_Morning_1_1_1/auto_Drone1_Morning_1_1_1_alti0',
-#     'S3_Drone1_Morning_1_1_4/auto_Drone1_Morning_1_1_4_alti0',
-#     'S3_Drone1_Morning_1_1_7/auto_Drone1_Morning_1_1_7_alti0',
-#     'S3_Drone2_Morning_2_1_1/auto_Drone2_Morning_2_1_1_alti0',
-#     'S3_Drone2_Morning_2_1_10/auto_Drone2_Morning_2_1_10_alti0',
+#     'S2_Drone1_Noon_1_2_2/auto_Drone1_Noon_1_2_2_alti0',
+#     'S2_Drone2_Noon_2_2_2/auto_Drone2_Noon_2_2_2_alti0',
+#     'S2_Drone1_Noon_1_2_4/auto_Drone1_Noon_1_2_4_alti0',
+#     'S2_Drone2_Noon_2_2_4/auto_Drone2_Noon_2_2_4_alti0',
+#     'S2_Drone1_Noon_1_2_9/auto_Drone1_Noon_1_2_9_alti0',
+#     'S2_Drone2_Noon_2_2_9/auto_Drone2_Noon_2_2_9_alti0',
 # ]
+############
+
+OUT_PATH='/mnt/hdd/code/human_data_generation/xrfeitoria/output/S3_Morning_v2'
+# REAL_FOLDERS=['/mnt/hdd/data/Okutama_Action/yolov8_Detection/1.1.1/'] 
+# REAL_FOLDERS=['/mnt/hdd/data/Okutama_Action/yolov8_Detection/2.2.4/'] 
+REAL_FOLDERS=['/mnt/hdd/data/Okutama_Action/yolov8_Detection/2.1.1/'] 
+# REAL_FOLDERS=[] 
+SUB_FOLDERS=[ 
+    'S3_Drone1_Morning_1_1_1/auto_Drone1_Morning_1_1_1_alti0',
+    'S3_Drone1_Morning_1_1_4/auto_Drone1_Morning_1_1_4_alti0',
+    'S3_Drone1_Morning_1_1_7/auto_Drone1_Morning_1_1_7_alti0',
+    'S3_Drone2_Morning_2_1_1/auto_Drone2_Morning_2_1_1_alti0',
+    'S3_Drone2_Morning_2_1_7/auto_Drone2_Morning_2_1_7_alti0',
+    'S3_Drone2_Morning_2_1_10/auto_Drone2_Morning_2_1_10_alti0',
+]
 #############
 
 

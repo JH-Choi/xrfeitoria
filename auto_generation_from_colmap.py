@@ -124,20 +124,19 @@ def main(args):
     if args.background_mesh_file is not None:
         xf_runner.utils.import_file(file_path=args.background_mesh_file)
         print('Load background mesh')
-
     # Load Colmap data
     root_path = Path(args.colmap_path)
     cameras, images, points3D = read_model(str(root_path), ext='.bin')
 
-    # select only split for visualiation
-    if args.split is not None:
-        new_images = {}
-        for key, val in images.items():
-            if args.split not in val.name:
-                continue
-            else:
-                new_images[key] = val
-        images = new_images
+    # # select only split for visualization
+    # if args.split is not None:
+    #     new_images = {}
+    #     for key, val in images.items():
+    #         if args.split not in val.name:
+    #             continue
+    #         else:
+    #             new_images[key] = val
+    #     images = new_images
 
     colmap_data = {}
     colmap_data['cameras'] = cameras
@@ -285,6 +284,7 @@ def main(args):
                     transform_keys=transform_keys,
                     fov=args.fov,
                 )
+                apply_scale(f'moving_camera_{moving_idx}', scale_factor=args.camera_scale_factor) 
 
                 tot_moving_dict[f'moving_camera_{moving_idx}'] = {} 
                 tot_moving_dict[f'moving_camera_{moving_idx}']['location'] = tot_Location_moving[moving_cam_idx:moving_cam_idx + min_frame_num]
@@ -320,6 +320,7 @@ def main(args):
                 fov=args.fov,
             )
 
+            apply_scale(f'static_camera_{idx}', scale_factor=args.camera_scale_factor) 
             # use the `camera` in level to render
             seq.use_camera(camera=static_camera)
 
@@ -339,13 +340,13 @@ def main(args):
             resolution=tuple(args.resolution),
             render_passes=[
                 RenderPass('img', 'png'),
-                RenderPass('depth', 'exr'),  
                 RenderPass('mask', 'exr')
             ], 
             render_samples=args.render_samples,  # default value 128 / fast 32
             transparent_background=True, 
         )
         # RenderPass('img', 'png'),
+        # RenderPass('depth', 'exr'),  
 
         # export verts of meshes in this sequence and its level
         # xf_runner.utils.export_vertices(export_path=output_path / seq_2_name / 'vertices')
@@ -431,6 +432,7 @@ if __name__ == '__main__':
     parser.add_argument('--background_mesh_file', type=str, default=None, help='Background mesh file')
     parser.add_argument('--colmap_path', type=str, default=None, help='data root folder')
     parser.add_argument('--split', type=str, default=None, help='data split')
+    parser.add_argument('--camera_scale_factor', type=float, default=0.3, help='camera visualization size')
     parser.add_argument('--hdri_path', type=str, default=None, help='hdri path')
     parser.add_argument('--output_path', type=str, default=None, help='output path')
     parser.add_argument('--num_actors', type=int, default=12, help='number of actors')

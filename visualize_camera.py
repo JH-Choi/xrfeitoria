@@ -86,9 +86,10 @@ args.background_mesh_file = '/mnt/hdd/code/outdoor_relighting/PGSR/output/okutam
 # Stationary Yaw Rotation
 # Control Rz
 #####################################################
-num_of_cameras_for_orbit = 20
+num_of_cameras_for_orbit = 6
 fixed_position = (0, 0, -3.0) # basic zcoord of mesh is -3.0
-altitude = 3.0
+altitude = 1.0
+# altitude = 3.0
 Rx, Ry = 55.0, 0
 fixed_position = (fixed_position[0], fixed_position[1], fixed_position[2] + altitude)   
 
@@ -99,8 +100,11 @@ for i in range(num_of_cameras_for_orbit):
     rotation = (Rx, Ry, azimuth)
 
     # Add noise
-    rotation = rotation + gen_noise(noise_std=0.05)  # Increase noise level if needed
-    location = location + gen_noise(noise_std=0.1)
+    # rotation = rotation + gen_noise(noise_std=0.05)  # Increase noise level if needed
+    location = location + gen_noise(noise_std=0.001)
+
+    rotation = rotation  # Increase noise level if needed
+    location = location
 
     tot_Location.append(location)
     tot_Rotation.append(rotation)  

@@ -166,9 +166,10 @@ if __name__ == '__main__':
     # args.colmap_path = '/mnt/hdd/data/Archangel/Scenario1/sparse_aligned/0'
     # args.background_mesh_file = '/mnt/hdd/data/Okutama_Action/GS_data/Scenario2/undistorted/Poisson/mesh_poisson_level10_density9_decim.ply'
     # args.split = 'Drone2_Noon_2_2_2'
+    # args.split = 'Drone1_Noon_1_2_2'
     # args.split = 'Drone1_Noon_1_2_4'
     # args.split = 'Drone1_Morning_1_1_1'
     # args.split = 'Drone1_Noon_1_2_9'
-    args.split = 'Drone2_Morning_2_1_10'
+    args.split = 'Drone2_Morning_2_1_7'
     # args.split = 'Drone1_Morning_1_1_7'
     main(args)

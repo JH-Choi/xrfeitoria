@@ -97,6 +97,7 @@ def main(background: bool = False):
             render_passes=[RenderPass('img', 'png')],
             render_engine='eevee',
         )
+        import pdb; pdb.set_trace()
 
     # Save the blend file
     xf_runner.utils.save_blend(saved_blend_file, pack=True)
